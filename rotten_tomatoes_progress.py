@@ -27,13 +27,14 @@ Dataset (Kaggle - stefanoleone992):
 # ─────────────────────────────────────────────
 # 0. IMPORTS & SETUP
 # ─────────────────────────────────────────────
-import pandas as pd
+import pandas as pd # used for working data
 import numpy as np
-import matplotlib.pyplot as plt
+import matplotlib.pyplot as plt # used for creating chart
 import seaborn as sns
 import re
 import os
 import warnings
+
 warnings.filterwarnings("ignore")
 
 from sklearn.model_selection import train_test_split
@@ -46,29 +47,25 @@ from sklearn.metrics import (
 from sklearn.preprocessing import LabelEncoder
 from scipy.sparse import hstack, csr_matrix
 
-# Sentiment scoring (Suphakrit - Apr 14-17)
 from vaderSentiment.vaderSentiment import SentimentIntensityAnalyzer
 
-# ─────────────────────────────────────────────
-# 1. LOAD DATA
-# (Suphakrit - Apr 10-13: data loader script)
-# ─────────────────────────────────────────────
-MOVIES_PATH  = "rotten_tomatoes_movies.csv"
+
+MOVIES_PATH = "rotten_tomatoes_movies.csv"
 REVIEWS_PATH = "rotten_tomatoes_critic_reviews.csv"
 
-print("Loading datasets...")
-movies  = pd.read_csv(MOVIES_PATH)
-reviews = pd.read_csv(REVIEWS_PATH)
 
-print(f"  Movies  : {movies.shape[0]:,} rows, {movies.shape[1]} cols")
-print(f"  Reviews : {reviews.shape[0]:,} rows, {reviews.shape[1]} cols")
-print("\nMovies columns :", movies.columns.tolist())
-print("Reviews columns:", reviews.columns.tolist())
+# read csv files
+print("\nLoading data...")
+movies = pd.read_csv(MOVIES_PATH)
+reviews =pd.read_csv(REVIEWS_PATH)
 
-# ─────────────────────────────────────────────
-# 2. MERGE & INITIAL CLEAN
-# (Suphakrit - Apr 10-13: explore dataset structure)
-# ─────────────────────────────────────────────
+print(f"\nMovies: {movies.shape[0]:,} rows, {movies.shape[1]} cols\n" )
+print(f"Reviews: {reviews.shape[0]:,} rows, {reviews.shape[1]} cols\n" )
+
+# check all the columns in each cvs
+print("Movies columns :", movies.columns.tolist())
+print("Reviews Columns :", reviews.columns.tolist())
+
 df = reviews.merge(
     movies[["rotten_tomatoes_link", "genres", "original_release_date", "tomatometer_rating"]],
     on="rotten_tomatoes_link",
@@ -86,10 +83,6 @@ df["label"] = (df["review_type"] == "Fresh").astype(int)  # 1 = Fresh, 0 = Rotte
 print(f"\nAfter cleaning: {df.shape[0]:,} reviews")
 print(df["label"].value_counts().rename({1: "Fresh", 0: "Rotten"}))
 
-# ─────────────────────────────────────────────
-# 3. BASIC EDA
-# (Suphakrit - Apr 10-13: explore dataset structure)
-# ─────────────────────────────────────────────
 os.makedirs("figures", exist_ok=True)
 
 # Class distribution
@@ -115,10 +108,7 @@ plt.savefig("figures/review_length_dist.png", dpi=150)
 plt.close()
 print("Saved: figures/review_length_dist.png")
 
-# ─────────────────────────────────────────────
-# 4. TEXT PREPROCESSING
-# (Christopher - Apr 14-17: tokenization, stopwords)
-# ─────────────────────────────────────────────
+
 def clean_text(text):
     """Lowercase, remove punctuation/numbers, strip whitespace."""
     text = str(text).lower()
@@ -129,10 +119,6 @@ def clean_text(text):
 print("\nCleaning review text...")
 df["clean_review"] = df["review_content"].apply(clean_text)
 
-# ─────────────────────────────────────────────
-# 5. SENTIMENT SCORING & FEATURE EXTRACTION
-# (Suphakrit - Apr 14-17)
-# ─────────────────────────────────────────────
 print("\nRunning VADER sentiment analysis...")
 analyzer = SentimentIntensityAnalyzer()
 
@@ -153,12 +139,7 @@ print(df[["review_content", "sent_compound", "label"]].head(5))
 print("\nMean compound sentiment by review type:")
 print(df.groupby("review_type")["sent_compound"].mean())
 
-# ─────────────────────────────────────────────
-# 6. FEATURE ENGINEERING
-# (Suphakrit - Apr 14-17: feature extraction)
-# ─────────────────────────────────────────────
 
-# 6a. TF-IDF on review text
 print("\nBuilding TF-IDF matrix...")
 tfidf = TfidfVectorizer(
     max_features=10000,
@@ -188,18 +169,12 @@ X_combined = hstack([X_tfidf, X_meta])
 y = df["label"].values
 print(f"\nFinal feature matrix shape: {X_combined.shape}")
 
-# ─────────────────────────────────────────────
-# 7. TRAIN / TEST SPLIT
-# ─────────────────────────────────────────────
+
 X_train, X_test, y_train, y_test = train_test_split(
     X_combined, y, test_size=0.2, random_state=42, stratify=y
 )
 print(f"Train size: {X_train.shape[0]:,}  |  Test size: {X_test.shape[0]:,}")
 
-# ─────────────────────────────────────────────
-# 8. MODEL 1 — LOGISTIC REGRESSION (BASELINE)
-# (Dylan - Apr 14-17: build and train baseline)
-# ─────────────────────────────────────────────
 print("\n─── Model 1: Logistic Regression (Baseline) ───")
 lr_model = LogisticRegression(max_iter=1000, C=1.0, solver="lbfgs", n_jobs=-1)
 lr_model.fit(X_train, y_train)
